@@ -1,0 +1,46 @@
+{
+  "name": "@flakiness/jest",
+  "version": "0.0.1",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flakiness/jest.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/src/reporter.d.ts",
+      "import": "./lib/reporter.js",
+      "require": "./lib/reporter.js"
+    }
+  },
+  "type": "module",
+  "description": "A custom Jest reporter that generates Flakiness Reports from your test runs",
+  "types": "./types/index.d.ts",
+  "scripts": {
+    "build": "kubik build.mts",
+    "watch": "kubik build.mts -w",
+    "test": "jest"
+  },
+  "keywords": [
+    "jest",
+    "test",
+    "reporter",
+    "flakiness",
+    "testing",
+    "e2e",
+    "test-reporting"
+  ],
+  "author": "Degu Labs, Inc",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "esbuild": "^0.27.2",
+    "kubik": "^0.24.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@flakiness/flakiness-report": "^0.31.0",
+    "@flakiness/sdk": "^2.7.0"
+  }
+}

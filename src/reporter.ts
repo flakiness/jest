@@ -3,8 +3,52 @@ import { CIUtils, GitWorktree, ReportUtils, showReportCommand, uploadReport, wri
 import type { AggregatedResult, Config, Reporter, ReporterContext, ReporterOnStartOptions, TestContext, TestResult } from '@jest/reporters';
 import path from 'node:path';
 import * as nodeUtil from 'node:util';
+import StackUtils from 'stack-utils';
 
 type AssertionResult = TestResult['testResults'][number];
+
+const stackUtils = new StackUtils({ internals: StackUtils.nodeInternals() });
+
+function parseErrorLocation(worktree: GitWorktree, testFilePath: string, stackText: string): FK.Location | undefined {
+  let firstUserFrame: FK.Location | undefined;
+  let firstTestFrame: FK.Location | undefined;
+  for (const line of stackText.split('\n')) {
+    const frame = stackUtils.parseLine(line);
+    if (!frame?.file || !frame.line || !frame.column)
+      continue;
+    // stack-utils strips cwd from absolute paths; re-absolutize before gitPath.
+    const absFile = path.isAbsolute(frame.file) ? frame.file : path.resolve(process.cwd(), frame.file);
+    const loc: FK.Location = {
+      file: worktree.gitPath(absFile),
+      line: frame.line as FK.Number1Based,
+      column: frame.column as FK.Number1Based,
+    };
+    if (loc.file === testFilePath)
+      firstTestFrame ??= loc;
+    if (!absFile.includes('node_modules'))
+      firstUserFrame ??= loc;
+  }
+  return firstTestFrame ?? firstUserFrame;
+}
+
+function collectAttemptErrors(
+  worktree: GitWorktree,
+  fileResult: TestResult,
+  assertion: AssertionResult,
+): FK.ReportError[] {
+  // `failureDetails[i]` and `failureMessages[i]` are built in lockstep in jest-circus.
+  const details = assertion.failureDetails as Array<{ message: string }>;
+  const messages = assertion.failureMessages;
+  const testFilePath = worktree.gitPath(fileResult.testFilePath);
+  return details.map((detail, i) => {
+    const cleanStack = ReportUtils.stripAnsi(messages[i]);
+    return {
+      message: ReportUtils.stripAnsi(detail.message).split('\n')[0],
+      stack: cleanStack,
+      location: parseErrorLocation(worktree, testFilePath, cleanStack),
+    };
+  });
+}
 
 function mapStatus(status: AssertionResult['status']): FK.TestStatus {
   switch (status) {
@@ -60,7 +104,7 @@ export default class FKJestReporter implements Reporter {
     this._logger = logger;
   }
 
-  private _attachTest(fileSuite: FK.Suite, assertion: AssertionResult, fileResult: TestResult) {
+  private _attachTest(fileSuite: FK.Suite, assertion: AssertionResult, fileResult: TestResult, worktree: GitWorktree) {
     let parent = fileSuite;
     for (const title of assertion.ancestorTitles) {
       parent.suites ??= [];
@@ -71,13 +115,13 @@ export default class FKJestReporter implements Reporter {
       }
       parent = next;
     }
-    // `startAt` is unset for tests that never executed (skip/todo/only-excluded) or file-level import failures.
-    const startTimestamp = (assertion.startAt ?? fileResult.perfStats.start) as FK.UnixTimestampMS;
     const attempt: FK.RunAttempt = {
       environmentIdx: 0,
       status: mapStatus(assertion.status),
-      startTimestamp,
+      // `startAt` is unset for tests that never executed (skip/todo/only-excluded) or file-level import failures.
+      startTimestamp: (assertion.startAt ?? fileResult.perfStats.start) as FK.UnixTimestampMS,
       duration: ((assertion.duration ?? 0) as FK.DurationMS),
+      errors: collectAttemptErrors(worktree, fileResult, assertion),
     };
     const test: FK.Test = {
       title: assertion.title,
@@ -108,7 +152,7 @@ export default class FKJestReporter implements Reporter {
         title: worktree.gitPath(fileResult.testFilePath),
       };
       for (const assertion of fileResult.testResults)
-        this._attachTest(fileSuite, assertion, fileResult);
+        this._attachTest(fileSuite, assertion, fileResult, worktree);
       fileSuites.push(fileSuite);
     }
 

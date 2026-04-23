@@ -12,8 +12,11 @@ importers:
         specifier: ^0.33.0
         version: 0.33.0(zod@4.3.6)
       '@flakiness/sdk':
-        specifier: ^3.0.0
-        version: 3.0.0(@flakiness/flakiness-report@0.33.0(zod@4.3.6))
+        specifier: ^3.1.0
+        version: 3.1.0(@flakiness/flakiness-report@0.33.0(zod@4.3.6))
+      stack-utils:
+        specifier: ^2.0.6
+        version: 2.0.6
     devDependencies:
       '@jest/reporters':
         specifier: ^30.3.0
@@ -30,6 +33,9 @@ importers:
       '@types/node':
         specifier: ^25.0.3
         version: 25.6.0
+      '@types/stack-utils':
+        specifier: ^2.0.3
+        version: 2.0.3
       esbuild:
         specifier: ^0.27.2
         version: 0.27.7
@@ -387,8 +393,8 @@ packages:
     peerDependencies:
       zod: ^4.1.12
 
-  '@flakiness/sdk@3.0.0':
-    resolution: {integrity: sha512-85hEg9gvu/1/MVjB5q4HiVWxIL46/lEmOIh1mJ2QwssXXyU7x5fe4C0vTCttO7WS+dCD355PlUzHoKkk8AUjBg==}
+  '@flakiness/sdk@3.1.0':
+    resolution: {integrity: sha512-1TXA7r/P35abhmW3fiasshqpkn+baNbiIqS2yQnFP/zGqpqa7GYRVJ2yJ+2BPx3nEf5G5ZJBgjo8mn9WJb32gA==}
     engines: {node: ^20.17.0 || >=22.9.0}
     peerDependencies:
       '@flakiness/flakiness-report': '>=0.26.0 <1.0.0'
@@ -2159,7 +2165,7 @@ snapshots:
     dependencies:
       zod: 4.3.6
 
-  '@flakiness/sdk@3.0.0(@flakiness/flakiness-report@0.33.0(zod@4.3.6))':
+  '@flakiness/sdk@3.1.0(@flakiness/flakiness-report@0.33.0(zod@4.3.6))':
     dependencies:
       '@flakiness/flakiness-report': 0.33.0(zod@4.3.6)
       debug: 4.4.3

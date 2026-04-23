@@ -24,8 +24,8 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 17 | `FLAKINESS_OUTPUT_DIR` | ✅ | Honored as output folder (joined to `process.cwd()`) when no explicit `outputFolder` option is passed; defaults to `flakiness-report`. |
 | 18 | Sources | ❌ | |
 | 19 | Error snippets | ❌ | |
-| 20 | Errors support | ❌ | |
+| 20 | Errors support | ✅ | Each attempt's `errors[]` populated from `AssertionResult.failureMessages` + `failureDetails`; `message`, `stack`, and parsed `location` emitted. Multi-error arrays appear when e.g. a hook also throws. `value` (non-Error throws) is not surfaced separately — Jest wraps thrown non-Errors into a synthetic `Error` with `message: "thrown: <formatted>"` before the reporter sees anything. |
 | 21 | Unattributed errors | ❌ | |
-| 22 | Source locations | ❌ | |
+| 22 | Source locations | ⚠️ | `ReportError.location` parsed from stack (first frame inside the test file, else first frame outside `node_modules`). `Test.location` and `Suite.location` not yet populated. |
 | 23 | Auto-upload | ❌ | |
 | 24 | CPU / RAM telemetry | ❌ | |

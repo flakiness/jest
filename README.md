@@ -5,6 +5,7 @@ Internal scratchpad while building this out. Not a user-facing README yet.
 ## User-facing gotchas
 
 - **`testLocationInResults`**: Jest does not populate `assertion.location` unless the user opts in via `testLocationInResults: true` in their `jest.config.*`. Without it, `Test.location` is absent from our report. Mention this prominently in the eventual user README.
+- **Retry error details** require `jest.retryTimes(n, { logErrorsBeforeRetry: true })`. Without the option, Jest drops prior-attempt errors — the flakiness report still shows the correct attempt count (derived from `invocations`), but the synthesized attempts have empty `errors[]`.
 - **`--experimental-vm-modules`**: required when running our own tests (Jest + ESM). End users aren't affected — their Jest config doesn't need it just because our reporter is ESM; their own ESM-ness dictates that.
 
 ## Jest limitations we can't work around

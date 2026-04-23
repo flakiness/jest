@@ -10,7 +10,7 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 3 | Multiple environments | ❌ | |
 | 4 | Custom environments (`FK_ENV_*`) | ❌ | |
 | 5 | Test hierarchy / suites | ✅ | One `file` suite per test file (title is git-relative path); nested `suite` layers reconstructed from `AssertionResult.ancestorTitles` (the `describe()` chain). Each test emits a single `RunAttempt` with mapped status, duration, and `startTimestamp`. |
-| 6 | Per-attempt reporting (retries) | ❌ | |
+| 6 | Per-attempt reporting (retries) | ⚠️ | N-1 failed `RunAttempt`s synthesized from `AssertionResult.invocations` + 1 final attempt from the regular status/errors. Per-retry error details only available when the user calls `jest.retryTimes(n, { logErrorsBeforeRetry: true })`; otherwise Jest drops prior errors and synthesized attempts have empty `errors[]` (attempt count still correct). Jest does not expose per-retry timing, so synthesized attempts share `startTimestamp` and have `duration: 0`. |
 | 7 | Per-attempt timeout | ❌ | |
 | 8 | Test steps | N/A | Jest has no native step concept. Hook events (`beforeEach`/`afterEach`/etc.) exist on jest-circus's internal event bus but are not re-emitted to reporters — only hook *errors* reach us (surfaced as extra entries in `attempt.errors`). Reporting hooks-as-steps would require shipping a custom Jest test environment. |
 | 9 | Expected status (`expectedStatus`) | ❌ | |

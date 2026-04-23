@@ -50,6 +50,18 @@ function collectAttemptErrors(
   });
 }
 
+function errorFromStackString(worktree: GitWorktree, testFilePath: string, stackText: string): FK.ReportError {
+  const cleanStack = ReportUtils.stripAnsi(stackText);
+  const firstLine = cleanStack.split('\n')[0] ?? '';
+  // Strip leading "Error: " / "AssertionError: " / etc.
+  const message = firstLine.replace(/^\s*[\w.]*Error:\s*/, '').trim();
+  return {
+    message,
+    stack: cleanStack,
+    location: parseErrorLocation(worktree, testFilePath, cleanStack),
+  };
+}
+
 function mapStatus(status: AssertionResult['status']): FK.TestStatus {
   switch (status) {
     case 'passed': return 'passed';
@@ -115,23 +127,43 @@ export default class FKJestReporter implements Reporter {
       }
       parent = next;
     }
-    const attempt: FK.RunAttempt = {
+    const testFilePath = worktree.gitPath(fileResult.testFilePath);
+    // `startAt` is unset for tests that never executed (skip/todo/only-excluded) or file-level import failures.
+    const startTimestamp = (assertion.startAt ?? fileResult.perfStats.start) as FK.UnixTimestampMS;
+
+    // Jest does not preserve per-retry timing. It also only populates `retryReasons` when the user
+    // opts in via `jest.retryTimes(n, { logErrorsBeforeRetry: true })`; otherwise prior errors are
+    // dropped. We synthesize N-1 failed attempts (from `invocations`) and use whatever retryReasons
+    // are available for error detail.
+    const invocations = assertion.invocations ?? 1;
+    const retryReasons = assertion.retryReasons ?? [];
+    const attempts: FK.RunAttempt[] = [];
+    for (let i = 0; i < invocations - 1; ++i) {
+      attempts.push({
+        environmentIdx: 0,
+        status: 'failed',
+        startTimestamp,
+        duration: 0 as FK.DurationMS,
+        errors: retryReasons[i] ? [errorFromStackString(worktree, testFilePath, retryReasons[i])] : [],
+      });
+    }
+    attempts.push({
       environmentIdx: 0,
       status: mapStatus(assertion.status),
-      // `startAt` is unset for tests that never executed (skip/todo/only-excluded) or file-level import failures.
-      startTimestamp: (assertion.startAt ?? fileResult.perfStats.start) as FK.UnixTimestampMS,
+      startTimestamp,
       duration: ((assertion.duration ?? 0) as FK.DurationMS),
       errors: collectAttemptErrors(worktree, fileResult, assertion),
-    };
+    });
+
     const testLocation: FK.Location | undefined = assertion.location ? {
-      file: worktree.gitPath(fileResult.testFilePath),
+      file: testFilePath,
       line: assertion.location.line as FK.Number1Based,
       column: assertion.location.column as FK.Number1Based,
     } : undefined;
     const test: FK.Test = {
       title: assertion.title,
       location: testLocation,
-      attempts: [attempt],
+      attempts,
     };
     parent.tests ??= [];
     parent.tests.push(test);

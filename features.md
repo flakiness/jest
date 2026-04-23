@@ -5,7 +5,7 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 
 | # | Feature | Status | Notes |
 |---|---------|--------|-------|
-| 1 | Report metadata | ❌ | |
+| 1 | Report metadata | ⚠️ | `commitId`, `flakinessProject`, `startTimestamp`, `duration` populated from Jest's lifecycle hooks; `url` auto-detected via `CIUtils.runUrl()` (GitHub Actions / Azure DevOps / GitLab CI / Jenkins). `configPath` **not populated** — Jest does not expose the resolved config path to reporters |
 | 2 | Environment metadata | ❌ | |
 | 3 | Multiple environments | ❌ | |
 | 4 | Custom environments (`FK_ENV_*`) | ❌ | |

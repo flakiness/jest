@@ -6,6 +6,9 @@ export default {
   globalSetup: '<rootDir>/tests/global-setup.ts',
   extensionsToTreatAsEsm: ['.ts'],
   testTimeout: 30000,
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
+  },
   transform: {
     '^.+\\.ts$': ['@swc/jest', {
       jsc: {

@@ -20,8 +20,8 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 13 | Annotations | ❌ | |
 | 14 | Tags | ❌ | |
 | 15 | `parallelIndex` | ❌ | |
-| 16 | `FLAKINESS_TITLE` | ❌ | |
-| 17 | `FLAKINESS_OUTPUT_DIR` | ❌ | |
+| 16 | `FLAKINESS_TITLE` | ✅ | Honored as report `title` when no explicit `title` option is passed; explicit option always wins. |
+| 17 | `FLAKINESS_OUTPUT_DIR` | ✅ | Honored as output folder (joined to `process.cwd()`) when no explicit `outputFolder` option is passed; defaults to `flakiness-report`. |
 | 18 | Sources | ❌ | |
 | 19 | Error snippets | ❌ | |
 | 20 | Errors support | ❌ | |

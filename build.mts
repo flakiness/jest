@@ -29,5 +29,7 @@ const { errors } = await esbuild.build({
   minify: false,
 });
 
-if (!errors.length)
+if (!errors.length) {
   await $`tsc --pretty -p .`;
+  await $`tsc --pretty -p ./tests`;
+}

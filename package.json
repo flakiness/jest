@@ -19,7 +19,7 @@
   "scripts": {
     "build": "kubik build.mts",
     "watch": "kubik build.mts -w",
-    "test": "jest"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "keywords": [
     "jest",
@@ -33,14 +33,19 @@
   "author": "Degu Labs, Inc",
   "license": "MIT",
   "devDependencies": {
+    "@jest/reporters": "^30.3.0",
+    "@swc/core": "^1.15.30",
+    "@swc/jest": "^0.2.39",
+    "@types/jest": "^30.0.0",
     "@types/node": "^25.0.3",
     "esbuild": "^0.27.2",
+    "jest": "^30.3.0",
     "kubik": "^0.24.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@flakiness/flakiness-report": "^0.31.0",
-    "@flakiness/sdk": "^2.7.0"
+    "@flakiness/flakiness-report": "^0.33.0",
+    "@flakiness/sdk": "^3.0.0"
   }
 }

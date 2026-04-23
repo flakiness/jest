@@ -1,0 +1,18 @@
+/** @type {import('jest').Config} */
+export default {
+  testEnvironment: 'node',
+  rootDir: '.',
+  testMatch: ['<rootDir>/tests/**/*.test.ts'],
+  globalSetup: '<rootDir>/tests/global-setup.ts',
+  extensionsToTreatAsEsm: ['.ts'],
+  testTimeout: 30000,
+  transform: {
+    '^.+\\.ts$': ['@swc/jest', {
+      jsc: {
+        parser: { syntax: 'typescript' },
+        target: 'es2022',
+      },
+      module: { type: 'es6' },
+    }],
+  },
+};

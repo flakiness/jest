@@ -1,8 +1,24 @@
 import { FlakinessReport as FK } from '@flakiness/flakiness-report';
 import { CIUtils, GitWorktree, ReportUtils, showReportCommand, uploadReport, writeReport } from '@flakiness/sdk';
-import type { AggregatedResult, Config, Reporter, ReporterContext, ReporterOnStartOptions, TestContext } from '@jest/reporters';
+import type { AggregatedResult, Config, Reporter, ReporterContext, ReporterOnStartOptions, TestContext, TestResult } from '@jest/reporters';
 import path from 'node:path';
 import * as nodeUtil from 'node:util';
+
+type AssertionResult = TestResult['testResults'][number];
+
+function mapStatus(status: AssertionResult['status']): FK.TestStatus {
+  switch (status) {
+    case 'passed': return 'passed';
+    case 'failed': return 'failed';
+    case 'pending':
+    case 'skipped':
+    case 'todo':
+    case 'disabled':
+      return 'skipped';
+    default:
+      return 'passed';
+  }
+}
 
 export type FKJestReporterOptions = {
   disableUpload?: boolean;
@@ -44,11 +60,38 @@ export default class FKJestReporter implements Reporter {
     this._logger = logger;
   }
 
+  private _attachTest(fileSuite: FK.Suite, assertion: AssertionResult, fileResult: TestResult) {
+    let parent = fileSuite;
+    for (const title of assertion.ancestorTitles) {
+      parent.suites ??= [];
+      let next = parent.suites.find(s => s.type === 'suite' && s.title === title);
+      if (!next) {
+        next = { type: 'suite', title };
+        parent.suites.push(next);
+      }
+      parent = next;
+    }
+    // `startAt` is unset for tests that never executed (skip/todo/only-excluded) or file-level import failures.
+    const startTimestamp = (assertion.startAt ?? fileResult.perfStats.start) as FK.UnixTimestampMS;
+    const attempt: FK.RunAttempt = {
+      environmentIdx: 0,
+      status: mapStatus(assertion.status),
+      startTimestamp,
+      duration: ((assertion.duration ?? 0) as FK.DurationMS),
+    };
+    const test: FK.Test = {
+      title: assertion.title,
+      attempts: [attempt],
+    };
+    parent.tests ??= [];
+    parent.tests.push(test);
+  }
+
   onRunStart(_results: AggregatedResult, _options: ReporterOnStartOptions) {
     this._startTimestamp = Date.now();
   }
 
-  async onRunComplete(_testContexts?: Set<TestContext>, _results?: AggregatedResult) {
+  async onRunComplete(_testContexts?: Set<TestContext>, results?: AggregatedResult) {
     const worktreeResult = GitWorktree.initialize(this._rootDir);
     if (!worktreeResult.ok) {
       this._logger.warn('[flakiness.io] Failed to fetch commit info - is this a git repo?');
@@ -57,6 +100,17 @@ export default class FKJestReporter implements Reporter {
     }
     const { worktree, commitId } = worktreeResult;
     const duration = (Date.now() - this._startTimestamp) as FK.DurationMS;
+
+    const fileSuites: FK.Suite[] = [];
+    for (const fileResult of results?.testResults ?? []) {
+      const fileSuite: FK.Suite = {
+        type: 'file',
+        title: worktree.gitPath(fileResult.testFilePath),
+      };
+      for (const assertion of fileResult.testResults)
+        this._attachTest(fileSuite, assertion, fileResult);
+      fileSuites.push(fileSuite);
+    }
 
     const report: FK.Report = ReportUtils.normalizeReport({
       title: this._options.title ?? process.env.FLAKINESS_TITLE,
@@ -67,7 +121,7 @@ export default class FKJestReporter implements Reporter {
       environments: [ReportUtils.createEnvironment({ name: 'jest' })],
       startTimestamp: this._startTimestamp as FK.UnixTimestampMS,
       duration,
-      suites: [],
+      suites: fileSuites,
     });
     await ReportUtils.collectSources(worktree, report);
 

@@ -9,7 +9,7 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 2 | Environment metadata | ✅ | Single environment emitted with `name: 'jest'` and `systemData` (`osName`, `osVersion`, `osArch`) auto-populated via `ReportUtils.createEnvironment()`. |
 | 3 | Multiple environments | ❌ | |
 | 4 | Custom environments (`FK_ENV_*`) | ❌ | |
-| 5 | Test hierarchy / suites | ❌ | |
+| 5 | Test hierarchy / suites | ✅ | One `file` suite per test file (title is git-relative path); nested `suite` layers reconstructed from `AssertionResult.ancestorTitles` (the `describe()` chain). Each test emits a single `RunAttempt` with mapped status, duration, and `startTimestamp`. |
 | 6 | Per-attempt reporting (retries) | ❌ | |
 | 7 | Per-attempt timeout | ❌ | |
 | 8 | Test steps | ❌ | |

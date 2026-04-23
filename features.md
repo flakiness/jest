@@ -26,6 +26,6 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 19 | Error snippets | ❌ | |
 | 20 | Errors support | ✅ | Each attempt's `errors[]` populated from `AssertionResult.failureMessages` + `failureDetails`; `message`, `stack`, and parsed `location` emitted. Multi-error arrays appear when e.g. a hook also throws. `value` (non-Error throws) is not surfaced separately — Jest wraps thrown non-Errors into a synthetic `Error` with `message: "thrown: <formatted>"` before the reporter sees anything. |
 | 21 | Unattributed errors | ❌ | |
-| 22 | Source locations | ⚠️ | `ReportError.location` parsed from stack (first frame inside the test file, else first frame outside `node_modules`). `Test.location` and `Suite.location` not yet populated. |
+| 22 | Source locations | ⚠️ | `Test.location` populated when Jest's `testLocationInResults: true` is set. `ReportError.location` parsed from stack (first frame inside the test file, else first frame outside `node_modules`). `Suite.location` **not** populated — Jest doesn't expose `describe()` call sites. |
 | 23 | Auto-upload | ❌ | |
 | 24 | CPU / RAM telemetry | ❌ | |

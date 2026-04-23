@@ -123,8 +123,14 @@ export default class FKJestReporter implements Reporter {
       duration: ((assertion.duration ?? 0) as FK.DurationMS),
       errors: collectAttemptErrors(worktree, fileResult, assertion),
     };
+    const testLocation: FK.Location | undefined = assertion.location ? {
+      file: worktree.gitPath(fileResult.testFilePath),
+      line: assertion.location.line as FK.Number1Based,
+      column: assertion.location.column as FK.Number1Based,
+    } : undefined;
     const test: FK.Test = {
       title: assertion.title,
+      location: testLocation,
       attempts: [attempt],
     };
     parent.tests ??= [];

@@ -11,7 +11,7 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 4 | Custom environments (`FK_ENV_*`) | ✅ | Handled transparently by `@flakiness/sdk`'s `ReportUtils.createEnvironment()`; reporter just calls it. |
 | 5 | Test hierarchy / suites | ✅ | One `file` suite per test file (title is git-relative path); nested `suite` layers reconstructed from `AssertionResult.ancestorTitles` (the `describe()` chain). Each test emits a single `RunAttempt` with mapped status, duration, and `startTimestamp`. |
 | 6 | Per-attempt reporting (retries) | ⚠️ | N-1 failed `RunAttempt`s synthesized from `AssertionResult.invocations` + 1 final attempt from the regular status/errors. Per-retry error details only available when the user calls `jest.retryTimes(n, { logErrorsBeforeRetry: true })`; otherwise Jest drops prior errors and synthesized attempts have empty `errors[]` (attempt count still correct). Jest does not expose per-retry timing, so synthesized attempts share `startTimestamp` and have `duration: 0`. |
-| 7 | Per-attempt timeout | ❌ | |
+| 7 | Per-attempt timeout | ⚠️ | Populated from `globalConfig.testTimeout` (or Jest's 5000ms default). Per-test overrides passed via `test(name, fn, timeout)` are **not** captured — Jest does not expose them on `AssertionResult`. |
 | 8 | Test steps | N/A | Jest has no native step concept. Hook events (`beforeEach`/`afterEach`/etc.) exist on jest-circus's internal event bus but are not re-emitted to reporters — only hook *errors* reach us (surfaced as extra entries in `attempt.errors`). Reporting hooks-as-steps would require shipping a custom Jest test environment. |
 | 9 | Expected status (`expectedStatus`) | ✅ | `test.failing()` → `AssertionResult.failing` → attempt's `expectedStatus: 'failed'`. Applies to all synthesized retry attempts as well. |
 | 10 | Attachments | ❌ | |
@@ -22,10 +22,10 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 15 | `parallelIndex` | ❌ | |
 | 16 | `FLAKINESS_TITLE` | ✅ | Honored as report `title` when no explicit `title` option is passed; explicit option always wins. |
 | 17 | `FLAKINESS_OUTPUT_DIR` | ✅ | Honored as output folder (joined to `process.cwd()`) when no explicit `outputFolder` option is passed; defaults to `flakiness-report`. |
-| 18 | Sources | ❌ | |
+| 18 | Sources | ✅ | `ReportUtils.collectSources()` walks every `Location` in the report (tests, errors, etc.) and embeds the referenced files into `report.sources[]` with ±5 lines of context. |
 | 19 | Error snippets | ❌ | |
 | 20 | Errors support | ✅ | Each attempt's `errors[]` populated from `AssertionResult.failureMessages` + `failureDetails`; `message`, `stack`, and parsed `location` emitted. Multi-error arrays appear when e.g. a hook also throws. `value` (non-Error throws) is not surfaced separately — Jest wraps thrown non-Errors into a synthetic `Error` with `message: "thrown: <formatted>"` before the reporter sees anything. |
-| 21 | Unattributed errors | ❌ | |
+| 21 | Unattributed errors | ✅ | `TestResult.testExecError` (import / setup failures that prevent a file from running) → `report.unattributedErrors[]`, with test coverage. `AggregatedResult.runExecError` (Jest's own runner crashing) is also forwarded but not unit-tested — it can only be triggered by Jest infrastructure failures we can't simulate from a sandbox. |
 | 22 | Source locations | ⚠️ | `Test.location` populated when Jest's `testLocationInResults: true` is set. `ReportError.location` parsed from stack (first frame inside the test file, else first frame outside `node_modules`). `Suite.location` **not** populated — Jest doesn't expose `describe()` call sites. |
 | 23 | Auto-upload | ❌ | |
 | 24 | CPU / RAM telemetry | ✅ | Sampled every 1s via SDK's `CPUUtilization` + `RAMUtilization`; enriched into report at `onRunComplete`. |

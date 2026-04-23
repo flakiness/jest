@@ -62,6 +62,19 @@ function errorFromStackString(worktree: GitWorktree, testFilePath: string, stack
   };
 }
 
+function errorFromSerializable(
+  worktree: GitWorktree,
+  testFilePath: string,
+  err: { message: string; stack?: string | null },
+): FK.ReportError {
+  const cleanStack = err.stack ? ReportUtils.stripAnsi(err.stack) : undefined;
+  return {
+    message: ReportUtils.stripAnsi(err.message),
+    stack: cleanStack,
+    location: cleanStack ? parseErrorLocation(worktree, testFilePath, cleanStack) : undefined,
+  };
+}
+
 function mapStatus(status: AssertionResult['status']): FK.TestStatus {
   switch (status) {
     case 'passed': return 'passed';
@@ -109,6 +122,7 @@ const styleText = (format: StyleTextFormat, text: string) =>
 
 export default class FKJestReporter implements Reporter {
   private _rootDir: string;
+  private _testTimeout: FK.DurationMS;
   private _startTimestamp = 0;
   private _telemetryTimer?: NodeJS.Timeout;
   private _cpuUtilization = new CPUUtilization({ precision: 10 });
@@ -125,6 +139,7 @@ export default class FKJestReporter implements Reporter {
     reporterContext?: ReporterContext,
   ) {
     this._rootDir = globalConfig.rootDir;
+    this._testTimeout = ((globalConfig.testTimeout ?? 5000) as FK.DurationMS);
   }
 
   setLoggerForTest(logger: FKJestLogger) {
@@ -163,6 +178,7 @@ export default class FKJestReporter implements Reporter {
         expectedStatus,
         startTimestamp,
         duration: 0 as FK.DurationMS,
+        timeout: this._testTimeout,
         errors: retryReasons[i] ? [errorFromStackString(worktree, testFilePath, retryReasons[i])] : [],
       });
     }
@@ -172,6 +188,7 @@ export default class FKJestReporter implements Reporter {
       expectedStatus,
       startTimestamp,
       duration: ((assertion.duration ?? 0) as FK.DurationMS),
+      timeout: this._testTimeout,
       errors: collectAttemptErrors(worktree, fileResult, assertion),
     });
 
@@ -215,6 +232,7 @@ export default class FKJestReporter implements Reporter {
     const duration = (Date.now() - this._startTimestamp) as FK.DurationMS;
 
     const fileSuites: FK.Suite[] = [];
+    const unattributedErrors: FK.ReportError[] = [];
     for (const fileResult of results?.testResults ?? []) {
       const fileSuite: FK.Suite = {
         type: 'file',
@@ -223,7 +241,11 @@ export default class FKJestReporter implements Reporter {
       for (const assertion of fileResult.testResults)
         this._attachTest(fileSuite, assertion, fileResult, worktree);
       fileSuites.push(fileSuite);
+      if (fileResult.testExecError)
+        unattributedErrors.push(errorFromSerializable(worktree, worktree.gitPath(fileResult.testFilePath), fileResult.testExecError));
     }
+    if (results?.runExecError)
+      unattributedErrors.push(errorFromSerializable(worktree, '', results.runExecError));
 
     const report: FK.Report = ReportUtils.normalizeReport({
       title: this._options.title ?? process.env.FLAKINESS_TITLE,
@@ -235,6 +257,7 @@ export default class FKJestReporter implements Reporter {
       startTimestamp: this._startTimestamp as FK.UnixTimestampMS,
       duration,
       suites: fileSuites,
+      unattributedErrors,
     });
     await ReportUtils.collectSources(worktree, report);
     this._cpuUtilization.enrich(report);

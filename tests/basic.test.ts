@@ -27,6 +27,13 @@ it('should report proper top-level properties', async () => {
   expect(env.systemData?.osVersion).toBeDefined();
   expect(env.systemData?.osArch).toBeDefined();
 
+  // CPU / RAM telemetry (feature #24).
+  expect(report.cpuCount).toBeGreaterThan(0);
+  expect(report.cpuAvg?.length ?? 0).toBeGreaterThan(0);
+  expect(report.cpuMax?.length ?? 0).toBeGreaterThan(0);
+  expect(report.ramBytes).toBeGreaterThan(0);
+  expect(report.ram?.length ?? 0).toBeGreaterThan(0);
+
   // Jest ran the sandbox tests successfully.
   expect(cmd.status).toBe(0);
 

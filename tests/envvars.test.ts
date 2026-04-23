@@ -1,5 +1,15 @@
 import { generateFlakinessReport } from './utils.js';
 
+it('should expose FK_ENV_* env vars as environment metadata', async () => {
+  const { report } = await generateFlakinessReport('envvars - FK_ENV', {
+    'a.test.js': `test('noop', () => {});`,
+  }, {
+    env: { FK_ENV_REGION: 'us-west-2', FK_ENV_BRANCH: 'main' },
+  });
+  const [env] = report.environments;
+  expect(env.metadata).toMatchObject({ region: 'us-west-2', branch: 'main' });
+});
+
 it('should honor FLAKINESS_TITLE env var', async () => {
   const { report } = await generateFlakinessReport('envvars - title', {
     'a.test.js': `test('noop', () => {});`,

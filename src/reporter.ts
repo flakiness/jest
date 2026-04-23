@@ -1,5 +1,5 @@
 import { FlakinessReport as FK } from '@flakiness/flakiness-report';
-import { CIUtils, GitWorktree, ReportUtils, showReportCommand, uploadReport, writeReport } from '@flakiness/sdk';
+import { CIUtils, CPUUtilization, GitWorktree, RAMUtilization, ReportUtils, showReportCommand, uploadReport, writeReport } from '@flakiness/sdk';
 import type { AggregatedResult, Config, Reporter, ReporterContext, ReporterOnStartOptions, TestContext, TestResult } from '@jest/reporters';
 import path from 'node:path';
 import * as nodeUtil from 'node:util';
@@ -76,6 +76,18 @@ function mapStatus(status: AssertionResult['status']): FK.TestStatus {
   }
 }
 
+// FK.status represents the body outcome; FK.expectedStatus the declared intent.
+// Jest inverts its own `AssertionResult.status` for `test.failing()` (the body
+// throwing registers as "passed" because expectation was met). Undo that.
+function actualBodyStatus(assertion: AssertionResult): FK.TestStatus {
+  const mapped = mapStatus(assertion.status);
+  if (!assertion.failing)
+    return mapped;
+  if (mapped === 'passed') return 'failed';
+  if (mapped === 'failed') return 'passed';
+  return mapped;
+}
+
 export type FKJestReporterOptions = {
   disableUpload?: boolean;
   flakinessProject?: string;
@@ -98,6 +110,9 @@ const styleText = (format: StyleTextFormat, text: string) =>
 export default class FKJestReporter implements Reporter {
   private _rootDir: string;
   private _startTimestamp = 0;
+  private _telemetryTimer?: NodeJS.Timeout;
+  private _cpuUtilization = new CPUUtilization({ precision: 10 });
+  private _ramUtilization = new RAMUtilization({ precision: 10 });
   private _logger: FKJestLogger = {
     warn: txt => console.warn(styleText('yellow', txt)),
     error: txt => console.error(styleText('red', txt)),
@@ -138,10 +153,14 @@ export default class FKJestReporter implements Reporter {
     const invocations = assertion.invocations ?? 1;
     const retryReasons = assertion.retryReasons ?? [];
     const attempts: FK.RunAttempt[] = [];
+    const expectedStatus: FK.TestStatus | undefined = assertion.failing ? 'failed' : undefined;
+    // Retries only fire on expectation-mismatch, so synthesized retries carry the opposite of expected.
+    const retryBodyStatus: FK.TestStatus = assertion.failing ? 'passed' : 'failed';
     for (let i = 0; i < invocations - 1; ++i) {
       attempts.push({
         environmentIdx: 0,
-        status: 'failed',
+        status: retryBodyStatus,
+        expectedStatus,
         startTimestamp,
         duration: 0 as FK.DurationMS,
         errors: retryReasons[i] ? [errorFromStackString(worktree, testFilePath, retryReasons[i])] : [],
@@ -149,7 +168,8 @@ export default class FKJestReporter implements Reporter {
     }
     attempts.push({
       environmentIdx: 0,
-      status: mapStatus(assertion.status),
+      status: actualBodyStatus(assertion),
+      expectedStatus,
       startTimestamp,
       duration: ((assertion.duration ?? 0) as FK.DurationMS),
       errors: collectAttemptErrors(worktree, fileResult, assertion),
@@ -171,9 +191,20 @@ export default class FKJestReporter implements Reporter {
 
   onRunStart(_results: AggregatedResult, _options: ReporterOnStartOptions) {
     this._startTimestamp = Date.now();
+    this._sampleSystem();
   }
 
+  private _sampleSystem = () => {
+    this._cpuUtilization.sample();
+    this._ramUtilization.sample();
+    this._telemetryTimer = setTimeout(this._sampleSystem, 1000);
+  };
+
   async onRunComplete(_testContexts?: Set<TestContext>, results?: AggregatedResult) {
+    clearTimeout(this._telemetryTimer);
+    this._cpuUtilization.sample();
+    this._ramUtilization.sample();
+
     const worktreeResult = GitWorktree.initialize(this._rootDir);
     if (!worktreeResult.ok) {
       this._logger.warn('[flakiness.io] Failed to fetch commit info - is this a git repo?');
@@ -206,6 +237,8 @@ export default class FKJestReporter implements Reporter {
       suites: fileSuites,
     });
     await ReportUtils.collectSources(worktree, report);
+    this._cpuUtilization.enrich(report);
+    this._ramUtilization.enrich(report);
 
     const outputFolder = this._options.outputFolder ?? path.join(
       process.cwd(),

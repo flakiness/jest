@@ -19,6 +19,14 @@ it('should report proper top-level properties', async () => {
   expect(report.duration).toBeGreaterThan(50);
   expect(report.startTimestamp).toBeGreaterThanOrEqual(starttime);
 
+  // Environment metadata (feature #2).
+  expect(report.environments).toHaveLength(1);
+  const env = report.environments[0];
+  expect(env.name).toBe('jest');
+  expect(env.systemData?.osName).toBeDefined();
+  expect(env.systemData?.osVersion).toBeDefined();
+  expect(env.systemData?.osArch).toBeDefined();
+
   // Jest ran the sandbox tests successfully.
   expect(cmd.status).toBe(0);
 

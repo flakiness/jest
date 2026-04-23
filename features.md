@@ -12,10 +12,10 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 5 | Test hierarchy / suites | ✅ | One `file` suite per test file (title is git-relative path); nested `suite` layers reconstructed from `AssertionResult.ancestorTitles` (the `describe()` chain). Each test emits a single `RunAttempt` with mapped status, duration, and `startTimestamp`. |
 | 6 | Per-attempt reporting (retries) | ❌ | |
 | 7 | Per-attempt timeout | ❌ | |
-| 8 | Test steps | ❌ | |
+| 8 | Test steps | N/A | Jest has no native step concept. Hook events (`beforeEach`/`afterEach`/etc.) exist on jest-circus's internal event bus but are not re-emitted to reporters — only hook *errors* reach us (surfaced as extra entries in `attempt.errors`). Reporting hooks-as-steps would require shipping a custom Jest test environment. |
 | 9 | Expected status (`expectedStatus`) | ❌ | |
 | 10 | Attachments | ❌ | |
-| 11 | Step-level attachments | ❌ | |
+| 11 | Step-level attachments | N/A | No steps (see #8). |
 | 12 | Timed StdIO | ❌ | |
 | 13 | Annotations | ❌ | |
 | 14 | Tags | ❌ | |

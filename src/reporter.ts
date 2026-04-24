@@ -91,6 +91,33 @@ function prettyTestEnvironment(raw: string | undefined): string | undefined {
 // 'passed' | 'failed' | 'pending' | 'todo'. The other values in AssertionResult['status']
 // ('skipped' / 'disabled' / 'focused') were Jasmine-era and are never produced today.
 
+type TagRange = { start: number; end: number; tag: string };
+
+// Matches each trailing `@word` token at non-word-boundary positions. The trailing lookahead
+// constrains the match to the run of @words at the end of the string, so mid-title `@words`
+// (and `alice@example.com`) are skipped.
+const TRAILING_TAG_RE = /(?<=^|\s)@(\w+)(?=(?:\s+@\w+)*\s*$)/g;
+
+function parseTrailingTags(title: string): TagRange[] {
+  const result: TagRange[] = [];
+  for (const m of title.matchAll(TRAILING_TAG_RE))
+    result.push({ start: m.index!, end: m.index! + m[0].length, tag: m[1] });
+  return result;
+}
+
+// For test titles: strip trailing tags and return them separately. A title that would collapse to
+// empty after stripping isn't a "tagged" title — those `@words` are the title itself; return
+// the original and no tags.
+function splitTitleAndTags(title: string): { title: string; tags: string[] } {
+  const ranges = parseTrailingTags(title);
+  if (!ranges.length)
+    return { title, tags: [] };
+  const stripped = title.slice(0, ranges[0].start).trimEnd();
+  if (!stripped)
+    return { title, tags: [] };
+  return { title: stripped, tags: ranges.map(r => r.tag) };
+}
+
 function collectAnnotations(assertion: AssertionResult, location: FK.Location | undefined): FK.Annotation[] {
   const annotations: FK.Annotation[] = [];
   if (assertion.status === 'pending')
@@ -173,7 +200,13 @@ export default class FKJestReporter implements Reporter {
 
   private _attachTest(fileSuite: FK.Suite, assertion: AssertionResult, fileResult: TestResult, worktree: GitWorktree, environmentIdx: number) {
     let parent = fileSuite;
+    const inheritedTags = new Set<string>();
     for (const title of assertion.ancestorTitles) {
+      // Suite titles keep their tags verbatim — users reading `describe('api stuff @v2')` expect
+      // to see that describe name literally. But trailing @tags on the suite still propagate as
+      // inherited tags for tests inside.
+      for (const t of parseTrailingTags(title))
+        inheritedTags.add(t.tag);
       parent.suites ??= [];
       let next = parent.suites.find(s => s.type === 'suite' && s.title === title);
       if (!next) {
@@ -224,9 +257,12 @@ export default class FKJestReporter implements Reporter {
       errors: collectAttemptErrors(worktree, fileResult, assertion),
       annotations,
     });
+    const { title: testTitle, tags: ownTags } = splitTitleAndTags(assertion.title);
+    const allTags = [...new Set([...inheritedTags, ...ownTags])];
     const test: FK.Test = {
-      title: assertion.title,
+      title: testTitle,
       location: testLocation,
+      tags: allTags.length ? allTags : undefined,
       attempts,
     };
     parent.tests ??= [];

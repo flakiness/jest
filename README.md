@@ -1,3 +1,5 @@
+[![Tests](https://img.shields.io/endpoint?url=https%3A%2F%2Fflakiness.io%2Fapi%2Fbadge%3Finput%3D%257B%2522badgeToken%2522%253A%2522badge-7F4xAjLMBnhHed4UATY78k%2522%257D)](https://flakiness.io/flakiness/jest)
+
 # Flakiness.io Jest Reporter
 
 A custom Jest reporter that generates Flakiness Reports from your Jest test runs. The reporter converts Jest test results into the standardized [Flakiness JSON format](https://github.com/flakiness/flakiness-report), capturing test outcomes, retries, system utilization, and environment information.

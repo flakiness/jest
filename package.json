@@ -33,6 +33,7 @@
   "author": "Degu Labs, Inc",
   "license": "MIT",
   "devDependencies": {
+    "@flakiness/jest": "1.0.0-alpha.1",
     "@jest/reporters": "^30.3.0",
     "@swc/core": "^1.15.30",
     "@swc/jest": "^0.2.39",

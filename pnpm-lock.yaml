@@ -18,6 +18,9 @@ importers:
         specifier: ^2.0.6
         version: 2.0.6
     devDependencies:
+      '@flakiness/jest':
+        specifier: 1.0.0-alpha.1
+        version: 1.0.0-alpha.1(zod@4.3.6)
       '@jest/reporters':
         specifier: ^30.3.0
         version: 30.3.0
@@ -392,6 +395,9 @@ packages:
     resolution: {integrity: sha512-9T3PYmHREr0KcxJiIg9qayRw3zvUb+e+Ok833SAQN1UNH7/MrUiV2fAlOpEqToocqIOAqrrIVmyS09+KuK+q1g==}
     peerDependencies:
       zod: ^4.1.12
+
+  '@flakiness/jest@1.0.0-alpha.1':
+    resolution: {integrity: sha512-tjq672q7EOhOFXWJqsVGmFXqG2hEXsGgYQ7G51KwElRrbUlkWZtEsDaIyGt1HHXt4n4BcCy5dNtZxKT6ab2RSg==}
 
   '@flakiness/sdk@3.1.0':
     resolution: {integrity: sha512-1TXA7r/P35abhmW3fiasshqpkn+baNbiIqS2yQnFP/zGqpqa7GYRVJ2yJ+2BPx3nEf5G5ZJBgjo8mn9WJb32gA==}
@@ -2164,6 +2170,15 @@ snapshots:
   '@flakiness/flakiness-report@0.33.0(zod@4.3.6)':
     dependencies:
       zod: 4.3.6
+
+  '@flakiness/jest@1.0.0-alpha.1(zod@4.3.6)':
+    dependencies:
+      '@flakiness/flakiness-report': 0.33.0(zod@4.3.6)
+      '@flakiness/sdk': 3.1.0(@flakiness/flakiness-report@0.33.0(zod@4.3.6))
+      stack-utils: 2.0.6
+    transitivePeerDependencies:
+      - supports-color
+      - zod
 
   '@flakiness/sdk@3.1.0(@flakiness/flakiness-report@0.33.0(zod@4.3.6))':
     dependencies:

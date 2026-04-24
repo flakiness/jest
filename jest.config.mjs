@@ -1,5 +1,11 @@
 /** @type {import('jest').Config} */
 export default {
+  reporters: [
+    'default',
+    ['@flakiness/jest', {
+      flakinessProject: 'flakiness/jest',
+    }],
+  ],
   testEnvironment: 'node',
   rootDir: '.',
   testMatch: ['<rootDir>/tests/**/*.test.ts'],

@@ -60,3 +60,11 @@ it('should default to a single "jest" environment when no projects are configure
   const [env] = assertCount(report.environments, 1);
   expect(env.name).toBe('jest');
 });
+
+it('should record the testEnvironment in environment metadata', async () => {
+  const { report } = await generateFlakinessReport('projects - testEnvironment metadata', {
+    'a.test.js': `test('ok', () => {});`,
+  });
+  const [env] = assertCount(report.environments, 1);
+  expect(env.metadata?.testEnvironment).toBe('node');
+});

@@ -75,6 +75,18 @@ function errorFromSerializable(
   };
 }
 
+function prettyTestEnvironment(raw: string | undefined): string | undefined {
+  if (!raw)
+    return undefined;
+  // Built-ins like 'node'/'jsdom' get resolved to absolute paths; extract the suffix.
+  const builtin = raw.match(/jest-environment-([\w-]+)/);
+  if (builtin)
+    return builtin[1];
+  if (path.isAbsolute(raw))
+    return path.basename(raw).replace(/\.(c|m)?[jt]sx?$/, '');
+  return raw;
+}
+
 function mapStatus(status: AssertionResult['status']): FK.TestStatus {
   switch (status) {
     case 'passed': return 'passed';
@@ -252,7 +264,11 @@ export default class FKJestReporter implements Reporter {
       const name = n === 1 ? baseName : `${baseName} (${n})`;
       idx = environments.length;
       envIdxByProjectId.set(id, idx);
-      environments.push(ReportUtils.createEnvironment({ name }));
+      const testEnvironment = prettyTestEnvironment(project?.testEnvironment);
+      environments.push(ReportUtils.createEnvironment({
+        name,
+        metadata: testEnvironment ? { testEnvironment } : undefined,
+      }));
       return idx;
     };
 

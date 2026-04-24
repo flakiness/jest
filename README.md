@@ -49,6 +49,7 @@ Add the reporter to your Jest config:
 ```js
 // jest.config.mjs
 export default {
+  testLocationInResults: true,
   reporters: [
     'default',
     ['@flakiness/jest', { flakinessProject: 'my-org/my-project' }],

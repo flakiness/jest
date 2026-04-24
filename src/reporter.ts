@@ -87,16 +87,28 @@ function prettyTestEnvironment(raw: string | undefined): string | undefined {
   return raw;
 }
 
+// Jest-Circus (default since Jest 27, only option since Jest 30) emits only
+// 'passed' | 'failed' | 'pending' | 'todo'. The other values in AssertionResult['status']
+// ('skipped' / 'disabled' / 'focused') were Jasmine-era and are never produced today.
+
+function collectAnnotations(assertion: AssertionResult, location: FK.Location | undefined): FK.Annotation[] {
+  const annotations: FK.Annotation[] = [];
+  if (assertion.status === 'pending')
+    annotations.push({ type: 'skip', location });
+  else if (assertion.status === 'todo')
+    annotations.push({ type: 'fixme', location });
+  if (assertion.failing)
+    annotations.push({ type: 'fail', location });
+  return annotations;
+}
+
 function mapStatus(status: AssertionResult['status']): FK.TestStatus {
   switch (status) {
-    case 'passed': return 'passed';
     case 'failed': return 'failed';
     case 'pending':
-    case 'skipped':
     case 'todo':
-    case 'disabled':
       return 'skipped';
-    default:
+    default:  // 'passed' and legacy Jasmine statuses
       return 'passed';
   }
 }
@@ -173,6 +185,12 @@ export default class FKJestReporter implements Reporter {
     const testFilePath = worktree.gitPath(fileResult.testFilePath);
     // `startAt` is unset for tests that never executed (skip/todo/only-excluded) or file-level import failures.
     const startTimestamp = (assertion.startAt ?? fileResult.perfStats.start) as FK.UnixTimestampMS;
+    const testLocation: FK.Location | undefined = assertion.location ? {
+      file: testFilePath,
+      line: assertion.location.line as FK.Number1Based,
+      column: assertion.location.column as FK.Number1Based,
+    } : undefined;
+    const annotations = collectAnnotations(assertion, testLocation);
 
     // Jest does not preserve per-retry timing. It also only populates `retryReasons` when the user
     // opts in via `jest.retryTimes(n, { logErrorsBeforeRetry: true })`; otherwise prior errors are
@@ -193,6 +211,7 @@ export default class FKJestReporter implements Reporter {
         duration: 0 as FK.DurationMS,
         timeout: this._testTimeout,
         errors: retryReasons[i] ? [errorFromStackString(worktree, testFilePath, retryReasons[i])] : [],
+        annotations: annotations.slice(),
       });
     }
     attempts.push({
@@ -203,13 +222,8 @@ export default class FKJestReporter implements Reporter {
       duration: ((assertion.duration ?? 0) as FK.DurationMS),
       timeout: this._testTimeout,
       errors: collectAttemptErrors(worktree, fileResult, assertion),
+      annotations,
     });
-
-    const testLocation: FK.Location | undefined = assertion.location ? {
-      file: testFilePath,
-      line: assertion.location.line as FK.Number1Based,
-      column: assertion.location.column as FK.Number1Based,
-    } : undefined;
     const test: FK.Test = {
       title: assertion.title,
       location: testLocation,

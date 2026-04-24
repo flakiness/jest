@@ -17,7 +17,7 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 10 | Attachments | ❌ | |
 | 11 | Step-level attachments | N/A | No steps (see #8). |
 | 12 | Timed StdIO | N/A | Jest's public reporter API exposes only `TestResult.console` — a file-level buffer with no per-test attribution and no per-entry timestamps. Per-test stdio would require shipping a custom Jest test environment (same seam as #8 hooks-as-steps), which is explicitly out-of-scope for this reporter. |
-| 13 | Annotations | ❌ | |
+| 13 | Annotations | ⚠️ | `test.skip` / `describe.skip` / `xtest` → `{ type: 'skip' }`; `test.todo` → `{ type: 'fixme' }`; `test.failing` → `{ type: 'fail' }` (alongside `expectedStatus`). Annotation `location` mirrors the test's location (when `testLocationInResults: true`). **No `description`** — Jest's skip/todo/failing APIs don't accept a reason argument. Custom annotations (`owner`, `slow`, etc.) not supported — Jest has no runtime API for them. |
 | 14 | Tags | ❌ | |
 | 15 | `parallelIndex` | ❌ | |
 | 16 | `FLAKINESS_TITLE` | ✅ | Honored as report `title` when no explicit `title` option is passed; explicit option always wins. |

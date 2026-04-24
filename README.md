@@ -2,6 +2,12 @@
 
 Internal scratchpad while building this out. Not a user-facing README yet.
 
+## Supported Jest
+
+- Requires the **jest-circus** test runner. Circus has been the default since Jest 27 (May 2021), so unless a project explicitly opts into `testRunner: 'jest-jasmine2'`, this reporter works out-of-the-box. Jest 30 removed Jasmine entirely.
+- We dev-build and test against Jest 30.x; Jest 27–29 on Circus should work without change.
+- Jasmine-era statuses (`'skipped'` / `'disabled'` / `'focused'`) are treated as the default `'passed'` fallback — Jasmine isn't a target.
+
 ## User-facing gotchas
 
 - **`testLocationInResults`**: Jest does not populate `assertion.location` unless the user opts in via `testLocationInResults: true` in their `jest.config.*`. Without it, `Test.location` is absent from our report. Mention this prominently in the eventual user README.

@@ -1,5 +1,6 @@
 /** @type {import('jest').Config} */
 export default {
+  testLocationInResults: true,
   reporters: [
     'default',
     ['@flakiness/jest', {

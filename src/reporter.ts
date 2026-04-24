@@ -159,7 +159,78 @@ export type FKJestReporterOptions = {
   token?: string;
   outputFolder?: string;
   title?: string;
+  /** How to handle tests with the same full name running in the same environment.
+   *  'fail'  (default): collapse duplicates into one failing test with a `dupe` annotation.
+   *  'rename': keep the first, suffix subsequent ones with " – dupe #N" + `dupe` annotation.
+   */
+  duplicates?: 'fail' | 'rename';
 };
+
+type DuplicateGroup = { tests: FK.Test[]; fullName: string; envIdx: number };
+
+function detectDuplicates(fileSuites: FK.Suite[]): DuplicateGroup[] {
+  // Group by (envIdx, suite path, title). A test with attempts in multiple envs joins every
+  // group for those envs — matches the spec's "same full name AND at least one common environment."
+  const groups = new Map<string, DuplicateGroup>();
+  const walk = (suite: FK.Suite, path: string[]) => {
+    const here = [...path, suite.title];
+    for (const sub of suite.suites ?? [])
+      walk(sub, here);
+    for (const test of suite.tests ?? []) {
+      const envIdxes = new Set(test.attempts.map(a => a.environmentIdx ?? 0));
+      for (const envIdx of envIdxes) {
+        const key = JSON.stringify({ env: envIdx, path: here, title: test.title });
+        let group = groups.get(key);
+        if (!group) {
+          group = { tests: [], fullName: [...here, test.title].join(' > '), envIdx };
+          groups.set(key, group);
+        }
+        group.tests.push(test);
+      }
+    }
+  };
+  for (const fs of fileSuites)
+    walk(fs, []);
+  return [...groups.values()].filter(g => g.tests.length > 1);
+}
+
+function dupeSuffix(n: number): string {
+  return ` – dupe #${n}`;
+}
+
+function renameDuplicateGroup(group: DuplicateGroup): void {
+  // First keeps name. Rest get " – dupe #N" + dupe annotation on each attempt.
+  for (let i = 1; i < group.tests.length; ++i) {
+    const t = group.tests[i];
+    t.title += dupeSuffix(i + 1);
+    for (const attempt of t.attempts) {
+      attempt.annotations ??= [];
+      attempt.annotations.push({ type: 'dupe' });
+    }
+  }
+}
+
+function failDuplicateGroup(group: DuplicateGroup): void {
+  const { tests, fullName, envIdx } = group;
+  // Collapse into one synthetic failing attempt on the first test.
+  tests[0].attempts = [{
+    environmentIdx: envIdx,
+    startTimestamp: Date.now() as FK.UnixTimestampMS,
+    duration: 0 as FK.DurationMS,
+    status: 'failed',
+    errors: [{
+      message: `Flakiness.io detected ${tests.length} tests with identical full name "${fullName}". Please rename tests so each has a unique full name.`,
+    }],
+    annotations: [{
+      type: 'dupe',
+      description: `Flakiness.io failed to process this test: ${tests.length} tests share the full name "${fullName}".`,
+    }],
+  }];
+  // Strip attempts from the remaining duplicates so they don't surface separately.
+  // Report normalization will drop these.
+  for (let i = 1; i < tests.length; ++i)
+    tests[i].attempts = [];
+}
 
 export interface FKJestLogger {
   log(txt: string): void;
@@ -341,6 +412,18 @@ export default class FKJestReporter implements Reporter {
     // Ensure there's always at least one environment, even for empty runs.
     if (environments.length === 0)
       envIdxFor(undefined);
+
+    // Detect and resolve duplicate test full-names (Jest allows same-name tests; flakiness.io
+    // merges them server-side per environment unless we disambiguate).
+    const duplicates = detectDuplicates(fileSuites);
+    if (duplicates.length > 0) {
+      this._logger.warn('[flakiness.io] ⚠ Detected tests with duplicate full names:');
+      for (const { tests, fullName } of duplicates)
+        this._logger.warn(`[flakiness.io] - ${tests.length}× "${fullName}"`);
+      const mode = this._options.duplicates ?? 'fail';
+      for (const group of duplicates)
+        (mode === 'rename' ? renameDuplicateGroup : failDuplicateGroup)(group);
+    }
 
     const report: FK.Report = ReportUtils.normalizeReport({
       title: this._options.title ?? process.env.FLAKINESS_TITLE,

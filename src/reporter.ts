@@ -421,6 +421,8 @@ export default class FKJestReporter implements Reporter {
       for (const { tests, fullName } of duplicates)
         this._logger.warn(`[flakiness.io] - ${tests.length}× "${fullName}"`);
       const mode = this._options.duplicates ?? 'fail';
+      if (mode === 'fail')
+        this._logger.warn(`[flakiness.io] These tests will be reported as failing. Set the reporter's "duplicates" option to 'rename' to auto-suffix duplicates instead.`);
       for (const group of duplicates)
         (mode === 'rename' ? renameDuplicateGroup : failDuplicateGroup)(group);
     }

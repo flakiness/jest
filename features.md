@@ -16,7 +16,7 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 9 | Expected status (`expectedStatus`) | ✅ | `test.failing()` → `AssertionResult.failing` → attempt's `expectedStatus: 'failed'`. Applies to all synthesized retry attempts as well. |
 | 10 | Attachments | ❌ | |
 | 11 | Step-level attachments | N/A | No steps (see #8). |
-| 12 | Timed StdIO | ❌ | |
+| 12 | Timed StdIO | N/A | Jest's public reporter API exposes only `TestResult.console` — a file-level buffer with no per-test attribution and no per-entry timestamps. Per-test stdio would require shipping a custom Jest test environment (same seam as #8 hooks-as-steps), which is explicitly out-of-scope for this reporter. |
 | 13 | Annotations | ❌ | |
 | 14 | Tags | ❌ | |
 | 15 | `parallelIndex` | ❌ | |
@@ -27,5 +27,5 @@ Status of [Flakiness Report Features](https://github.com/flakiness/flakiness-rep
 | 20 | Errors support | ✅ | Each attempt's `errors[]` populated from `AssertionResult.failureMessages` + `failureDetails`; `message`, `stack`, and parsed `location` emitted. Multi-error arrays appear when e.g. a hook also throws. `value` (non-Error throws) is not surfaced separately — Jest wraps thrown non-Errors into a synthetic `Error` with `message: "thrown: <formatted>"` before the reporter sees anything. |
 | 21 | Unattributed errors | ✅ | `TestResult.testExecError` (import / setup failures that prevent a file from running) → `report.unattributedErrors[]`, with test coverage. `AggregatedResult.runExecError` (Jest's own runner crashing) is also forwarded but not unit-tested — it can only be triggered by Jest infrastructure failures we can't simulate from a sandbox. |
 | 22 | Source locations | ⚠️ | `Test.location` populated when Jest's `testLocationInResults: true` is set. `ReportError.location` parsed from stack (first frame inside the test file, else first frame outside `node_modules`). `Suite.location` **not** populated — Jest doesn't expose `describe()` call sites. |
-| 23 | Auto-upload | ❌ | |
+| 23 | Auto-upload | ✅ | Delegates to SDK's `uploadReport()` which handles `FLAKINESS_ACCESS_TOKEN`, GitHub Actions OIDC (when `flakinessProject` is set), and `FLAKINESS_ENDPOINT`. Reporter also honors `FLAKINESS_DISABLE_UPLOAD` env var and `disableUpload` option to skip the upload call entirely. |
 | 24 | CPU / RAM telemetry | ✅ | Sampled every 1s via SDK's `CPUUtilization` + `RAMUtilization`; enriched into report at `onRunComplete`. |

@@ -1,6 +1,6 @@
 import { FlakinessReport as FK } from '@flakiness/flakiness-report';
 import { CIUtils, CPUUtilization, GitWorktree, RAMUtilization, ReportUtils, showReportCommand, uploadReport, writeReport } from '@flakiness/sdk';
-import type { AggregatedResult, Config, Reporter, ReporterContext, ReporterOnStartOptions, TestContext, TestResult } from '@jest/reporters';
+import type { AggregatedResult, Config, Reporter, ReporterContext, ReporterOnStartOptions, Test, TestContext, TestResult } from '@jest/reporters';
 import path from 'node:path';
 import * as nodeUtil from 'node:util';
 import StackUtils from 'stack-utils';
@@ -124,6 +124,7 @@ export default class FKJestReporter implements Reporter {
   private _rootDir: string;
   private _testTimeout: FK.DurationMS;
   private _startTimestamp = 0;
+  private _projectByResult = new WeakMap<TestResult, Config.ProjectConfig>();
   private _telemetryTimer?: NodeJS.Timeout;
   private _cpuUtilization = new CPUUtilization({ precision: 10 });
   private _ramUtilization = new RAMUtilization({ precision: 10 });
@@ -146,7 +147,7 @@ export default class FKJestReporter implements Reporter {
     this._logger = logger;
   }
 
-  private _attachTest(fileSuite: FK.Suite, assertion: AssertionResult, fileResult: TestResult, worktree: GitWorktree) {
+  private _attachTest(fileSuite: FK.Suite, assertion: AssertionResult, fileResult: TestResult, worktree: GitWorktree, environmentIdx: number) {
     let parent = fileSuite;
     for (const title of assertion.ancestorTitles) {
       parent.suites ??= [];
@@ -173,7 +174,7 @@ export default class FKJestReporter implements Reporter {
     const retryBodyStatus: FK.TestStatus = assertion.failing ? 'passed' : 'failed';
     for (let i = 0; i < invocations - 1; ++i) {
       attempts.push({
-        environmentIdx: 0,
+        environmentIdx,
         status: retryBodyStatus,
         expectedStatus,
         startTimestamp,
@@ -183,7 +184,7 @@ export default class FKJestReporter implements Reporter {
       });
     }
     attempts.push({
-      environmentIdx: 0,
+      environmentIdx,
       status: actualBodyStatus(assertion),
       expectedStatus,
       startTimestamp,
@@ -211,6 +212,10 @@ export default class FKJestReporter implements Reporter {
     this._sampleSystem();
   }
 
+  onTestResult(test: Test, testResult: TestResult) {
+    this._projectByResult.set(testResult, test.context.config);
+  }
+
   private _sampleSystem = () => {
     this._cpuUtilization.sample();
     this._ramUtilization.sample();
@@ -231,21 +236,45 @@ export default class FKJestReporter implements Reporter {
     const { worktree, commitId } = worktreeResult;
     const duration = (Date.now() - this._startTimestamp) as FK.DurationMS;
 
+    // Dedup environments by ProjectConfig.id (stable hash). Names come from displayName; if two
+    // projects share a name, suffix with " (2)", " (3)", etc. so every environment is distinctly labeled.
+    const envIdxByProjectId = new Map<string, number>();
+    const nameUseCount = new Map<string, number>();
+    const environments: FK.Environment[] = [];
+    const envIdxFor = (project: Config.ProjectConfig | undefined): number => {
+      const id = project?.id ?? '__default__';
+      let idx = envIdxByProjectId.get(id);
+      if (idx !== undefined)
+        return idx;
+      const baseName = project?.displayName?.name ?? 'jest';
+      const n = (nameUseCount.get(baseName) ?? 0) + 1;
+      nameUseCount.set(baseName, n);
+      const name = n === 1 ? baseName : `${baseName} (${n})`;
+      idx = environments.length;
+      envIdxByProjectId.set(id, idx);
+      environments.push(ReportUtils.createEnvironment({ name }));
+      return idx;
+    };
+
     const fileSuites: FK.Suite[] = [];
     const unattributedErrors: FK.ReportError[] = [];
     for (const fileResult of results?.testResults ?? []) {
+      const environmentIdx = envIdxFor(this._projectByResult.get(fileResult));
       const fileSuite: FK.Suite = {
         type: 'file',
         title: worktree.gitPath(fileResult.testFilePath),
       };
       for (const assertion of fileResult.testResults)
-        this._attachTest(fileSuite, assertion, fileResult, worktree);
+        this._attachTest(fileSuite, assertion, fileResult, worktree, environmentIdx);
       fileSuites.push(fileSuite);
       if (fileResult.testExecError)
         unattributedErrors.push(errorFromSerializable(worktree, worktree.gitPath(fileResult.testFilePath), fileResult.testExecError));
     }
     if (results?.runExecError)
       unattributedErrors.push(errorFromSerializable(worktree, '', results.runExecError));
+    // Ensure there's always at least one environment, even for empty runs.
+    if (environments.length === 0)
+      envIdxFor(undefined);
 
     const report: FK.Report = ReportUtils.normalizeReport({
       title: this._options.title ?? process.env.FLAKINESS_TITLE,
@@ -253,7 +282,7 @@ export default class FKJestReporter implements Reporter {
       flakinessProject: this._options.flakinessProject,
       category: 'jest',
       commitId,
-      environments: [ReportUtils.createEnvironment({ name: 'jest' })],
+      environments,
       startTimestamp: this._startTimestamp as FK.UnixTimestampMS,
       duration,
       suites: fileSuites,

@@ -1,9 +1,11 @@
 import { FlakinessReport as FK } from '@flakiness/flakiness-report';
 import { CIUtils, CPUUtilization, GitWorktree, RAMUtilization, ReportUtils, showReportCommand, uploadReport, writeReport } from '@flakiness/sdk';
 import type { AggregatedResult, Config, Reporter, ReporterContext, ReporterOnStartOptions, Test, TestContext, TestResult } from '@jest/reporters';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import * as nodeUtil from 'node:util';
 import StackUtils from 'stack-utils';
+import pkg from '../package.json' with { type: 'json' };
 
 type AssertionResult = TestResult['testResults'][number];
 
@@ -433,6 +435,9 @@ export default class FKJestReporter implements Reporter {
       flakinessProject: this._options.flakinessProject,
       category: 'jest',
       commitId,
+      generatedBy: { name: pkg.name, version: pkg.version },
+      testRunner: readJestPackageInfo(),
+      runtime: ReportUtils.detectRuntime(),
       environments,
       startTimestamp: this._startTimestamp as FK.UnixTimestampMS,
       duration,
@@ -465,4 +470,19 @@ To open last Flakiness report, run:
   ${styleText('cyan', command)}
     `);
   }
+}
+
+function readJestPackageInfo(): { name: string; version: string } | undefined {
+  // Jest's reporter API doesn't expose its own version (unlike Playwright's `FullConfig.version`
+  // or Vitest's `Vitest.version`). Resolve `jest/package.json` from the reporter's location;
+  // fall back to `@jest/core` for setups that skip the `jest` umbrella package.
+  const require = createRequire(import.meta.url);
+  for (const pkgName of ['jest/package.json', '@jest/core/package.json']) {
+    try {
+      const pkg = require(pkgName);
+      if (typeof pkg?.version === 'string')
+        return { name: 'jest', version: pkg.version };
+    } catch {}
+  }
+  return undefined;
 }

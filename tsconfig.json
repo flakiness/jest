@@ -1,5 +1,6 @@
 { "include": [
       "src/**/*.ts",
+      "package.json",
   ],
   "compilerOptions": {
     "allowJs": true,

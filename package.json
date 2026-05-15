@@ -32,6 +32,9 @@
   ],
   "author": "Degu Labs, Inc",
   "license": "MIT",
+  "engines": {
+    "node": "^20.17.0 || >=22.9.0"
+  },
   "devDependencies": {
     "@flakiness/jest": "1.0.0-alpha.1",
     "@jest/reporters": "^30.3.0",
@@ -47,8 +50,8 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@flakiness/flakiness-report": "^0.33.0",
-    "@flakiness/sdk": "^3.1.0",
+    "@flakiness/flakiness-report": "^0.34.0",
+    "@flakiness/sdk": "^3.2.0",
     "stack-utils": "^2.0.6"
   }
 }

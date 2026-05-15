@@ -34,6 +34,14 @@ it('should report proper top-level properties', async () => {
   expect(report.ramBytes).toBeGreaterThan(0);
   expect(report.ram?.length ?? 0).toBeGreaterThan(0);
 
+  // Producer / runtime provenance (feature #1).
+  expect(report.generatedBy?.name).toBe('@flakiness/jest');
+  expect(report.generatedBy?.version).toMatch(/^\d+\.\d+\.\d+/);
+  expect(report.testRunner?.name).toBe('jest');
+  expect(report.testRunner?.version).toMatch(/^\d+\.\d+\.\d+/);
+  expect(report.runtime?.name).toBe('node');
+  expect(report.runtime?.version).toMatch(/^\d+\.\d+\.\d+/);
+
   // Jest ran the sandbox tests successfully.
   expect(cmd.status).toBe(0);
 

@@ -46,7 +46,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^25.9.3",
     "@types/stack-utils": "^2.0.3",
-    "esbuild": "^0.27.7",
+    "esbuild": "^0.28.1",
     "jest": "^30.4.2",
     "kubik": "^0.24.0",
     "stack-utils": "^2.0.6",

@@ -38,18 +38,18 @@
   "devDependencies": {
     "@flakiness/flakiness-report": "^0.34.0",
     "@flakiness/jest": "1.0.0-alpha.1",
-    "@flakiness/sdk": "^3.2.0",
-    "@jest/reporters": "^30.3.0",
-    "@swc/core": "^1.15.30",
+    "@flakiness/sdk": "^3.3.1",
+    "@jest/reporters": "^30.4.1",
+    "@swc/core": "^1.15.41",
     "@swc/jest": "^0.2.39",
     "@types/jest": "^30.0.0",
-    "@types/node": "^25.0.3",
+    "@types/node": "^25.9.3",
     "@types/stack-utils": "^2.0.3",
-    "esbuild": "^0.27.2",
-    "jest": "^30.3.0",
+    "esbuild": "^0.27.7",
+    "jest": "^30.4.2",
     "kubik": "^0.24.0",
     "stack-utils": "^2.0.6",
-    "tsx": "^4.21.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3"
   }
 }

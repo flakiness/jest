@@ -36,7 +36,9 @@
     "node": "^20.17.0 || >=22.9.0"
   },
   "devDependencies": {
+    "@flakiness/flakiness-report": "^0.34.0",
     "@flakiness/jest": "1.0.0-alpha.1",
+    "@flakiness/sdk": "^3.2.0",
     "@jest/reporters": "^30.3.0",
     "@swc/core": "^1.15.30",
     "@swc/jest": "^0.2.39",
@@ -46,12 +48,8 @@
     "esbuild": "^0.27.2",
     "jest": "^30.3.0",
     "kubik": "^0.24.0",
+    "stack-utils": "^2.0.6",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "@flakiness/flakiness-report": "^0.34.0",
-    "@flakiness/sdk": "^3.2.0",
-    "stack-utils": "^2.0.6"
   }
 }

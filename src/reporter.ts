@@ -354,7 +354,8 @@ export default class FKJestReporter implements Reporter {
   private _sampleSystem = () => {
     this._cpuUtilization.sample();
     this._ramUtilization.sample();
-    this._telemetryTimer = setTimeout(this._sampleSystem, 1000);
+    // unref() so a pending sample never keeps the host process alive.
+    this._telemetryTimer = setTimeout(this._sampleSystem, 1000).unref();
   };
 
   async onRunComplete(_testContexts?: Set<TestContext>, results?: AggregatedResult) {

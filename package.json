@@ -7,6 +7,10 @@
     "type": "git",
     "url": "git+https://github.com/flakiness/jest.git"
   },
+  "homepage": "https://github.com/flakiness/jest#readme",
+  "bugs": {
+    "url": "https://github.com/flakiness/jest/issues"
+  },
   "exports": {
     ".": {
       "types": "./types/src/reporter.d.ts",

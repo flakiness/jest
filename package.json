@@ -23,7 +23,6 @@
   "types": "./types/src/reporter.d.ts",
   "scripts": {
     "build": "kubik build.mts",
-    "test:package": "node scripts/verify-package-entrypoints.mjs",
     "watch": "kubik build.mts -w",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },

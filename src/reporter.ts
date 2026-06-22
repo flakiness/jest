@@ -38,16 +38,19 @@ function collectAttemptErrors(
   fileResult: TestResult,
   assertion: AssertionResult,
 ): FK.ReportError[] {
-  // `failureDetails[i]` and `failureMessages[i]` are built in lockstep in jest-circus.
-  const details = assertion.failureDetails as Array<{ message: string }>;
+  // On jest 29 we've seen either `failureMessages[i]` or `detail.message` come through
+  // as undefined, which crashes stripAnsi() (it does `str.replace(...)`). Guard both and
+  // leave the field unset when a side is missing — the surviving side still carries the info.
+  const details = assertion.failureDetails as Array<{ message?: string }>;
   const messages = assertion.failureMessages;
   const testFilePath = worktree.gitPath(fileResult.testFilePath);
   return details.map((detail, i) => {
-    const cleanStack = ReportUtils.stripAnsi(messages[i]);
+    const cleanStack = typeof messages[i] === 'string' ? ReportUtils.stripAnsi(messages[i]) : undefined;
+    const cleanMessage = typeof detail?.message === 'string' ? ReportUtils.stripAnsi(detail.message) : undefined;
     return {
-      message: ReportUtils.stripAnsi(detail.message).split('\n')[0],
+      message: cleanMessage?.split('\n')[0],
       stack: cleanStack,
-      location: parseErrorLocation(worktree, testFilePath, cleanStack),
+      location: cleanStack ? parseErrorLocation(worktree, testFilePath, cleanStack) : undefined,
     };
   });
 }

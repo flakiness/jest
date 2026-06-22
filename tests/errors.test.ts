@@ -82,6 +82,39 @@ it('should surface multiple errors when a hook also throws', async () => {
   expect(messages).toContain('hook-error');
 });
 
+it('should not crash when weird error gets reported', async () => {
+  // jest <30 serializes worker results as JSON, and an Error's `message`/`stack` are
+  // non-enumerable, so failureDetails[i] arrives at the reporter as a bare `{}` with
+  // `message: undefined` — while failureMessages[i] survives as a pre-formatted string.
+  // The reporter used to call ReportUtils.stripAnsi(detail.message) and crash in
+  // onRunComplete with "Cannot read properties of undefined (reading 'replace')",
+  // aborting the whole report. We emulate that shape here: read `.stack` so it keeps
+  // the message, then drop `.message` (failureDetails hole) while the stack string
+  // (failureMessages) stays intact.
+  const { report, cmd } = await generateFlakinessReport('errors - serialized detail', {
+    'a.test.js': `
+      test('boom', () => {
+        const e = new Error('serialized-error-message');
+        void e.stack;          // force V8 to format the stack with the message
+        e.message = undefined;  // failureDetails[i].message is now a hole
+        throw e;
+      });
+    `,
+  });
+  // The reporter must not crash: a report is still produced for the failed test.
+  expect(cmd.stderr).not.toContain("reading 'replace'");
+  const [fileSuite] = assertCount(report.suites, 1);
+  const [test] = assertCount(fileSuite.tests, 1);
+  const [attempt] = assertCount(test.attempts, 1);
+  expect(attempt.status).toBe('failed');
+  const [error] = assertCount(attempt.errors, 1);
+  // `detail.message` was the hole, so `message` is left unset, but the surviving
+  // stack string still carries the error text and location.
+  expect(error.message).toBeUndefined();
+  expect(error.stack).toContain('serialized-error-message');
+  expect(error.stack).toContain('a.test.js');
+});
+
 it('should not attach errors to a passing test', async () => {
   const { report } = await generateFlakinessReport('errors - passing test', {
     'a.test.js': `test('ok', () => {});`,

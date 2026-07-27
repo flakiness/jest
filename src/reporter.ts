@@ -1,5 +1,5 @@
 import { FlakinessReport as FK } from '@flakiness/flakiness-report';
-import { CIUtils, CPUUtilization, GitWorktree, RAMUtilization, ReportUtils, showReportCommand, uploadReport, writeReport } from '@flakiness/sdk';
+import { CIUtils, CPUUtilization, GitWorktree, RAMUtilization, ReportUtils, showReportMessage, uploadReport, writeReport } from '@flakiness/sdk';
 import type { AggregatedResult, Config, Reporter, ReporterContext, ReporterOnStartOptions, Test, TestContext, TestResult } from '@jest/reporters';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -467,12 +467,7 @@ export default class FKJestReporter implements Reporter {
       });
     }
 
-    const command = showReportCommand(outputFolder);
-    this._logger.log(`
-To open last Flakiness report, run:
-
-  ${styleText('cyan', command)}
-    `);
+    this._logger.log(`\n${showReportMessage(outputFolder)}\n`);
   }
 }
 

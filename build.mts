@@ -24,7 +24,7 @@ const { errors } = await esbuild.build({
   format: 'esm',
   platform: 'node',
   target: ['node22'],
-  sourcemap: true,
+  sourcemap: false,
   // Bundle all prod dependencies (zod in particular) so the published
   // package has zero runtime dependencies besides Jest itself.
   bundle: true,
